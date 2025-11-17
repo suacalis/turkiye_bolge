@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Türkiye İş Cinayetleri Haritası</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        #header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        #controls {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 11px;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        input[type="text"], input[type="date"], select {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, input[type="date"]:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        input[type="text"] {
+            width: 250px;
+        }
+
+        button {
+            padding: 8px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.3s;
+            margin-top: auto;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button.reset {
+            background: #e74c3c;
+        }
+
+        button.reset:hover {
+            background: #c0392b;
+        }
+
+        #map {
+            flex: 1;
+            width: 100%;
+            min-height: 500px;
+            position: relative;
+            background-color: #e8e8e8;
+        }
+
+        #main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #map-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        #stats-section {
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fa;
+            border-left: 2px solid #e0e0e0;
+            overflow-y: auto;
+        }
+
+        #stats-header {
+            background: white;
+            padding: 12px 15px;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            gap: 20px;
+            flex-shrink: 0;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        #infographic-side {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .info-cards-side {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .info-card-small {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .info-card-small:hover {
+            transform: translateX(5px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+        }
+
+        .card-icon-small {
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+
+        .card-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .card-title-small {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .card-value-small {
+            font-size: 14px;
+            font-weight: bold;
+            color: #667eea;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .charts-side {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .chart-box-side {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+
+        .chart-box-side h3 {
+            font-size: 14px;
+            color: #333;
+            margin: 0 0 12px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .chart-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .chart-label {
+            flex: 0 0 120px;
+            font-size: 13px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .chart-bar-container {
+            flex: 1;
+            height: 24px;
+            background: #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 0 10px;
+        }
+
+        .chart-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            transition: width 0.5s ease;
+        }
+
+        .chart-value {
+            flex: 0 0 40px;
+            text-align: right;
+            font-size: 13px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .leaflet-popup-content {
+            margin: 15px;
+            width: 300px !important;
+        }
+
+        .popup-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .popup-info {
+            margin: 8px 0;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .popup-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .popup-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 6px 12px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        .popup-link:hover {
+            background: #5568d3;
+        }
+
+        .marker-cluster {
+            background: rgba(255, 165, 0, 0.6);
+        }
+
+        .marker-cluster div {
+            background: rgba(255, 140, 0, 0.8);
+            color: white;
+            font-weight: bold;
+        }
+
+        .custom-marker {
+            background: transparent;
+        }
+
+        .custom-marker .marker-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform-origin: center center;
+        }
+
+        .custom-marker .marker-circle.low {
+            background: #f39c12;
+        }
+
+        .custom-marker .marker-circle.medium {
+            background: #e67e22;
+        }
+
+        .custom-marker .marker-circle.high {
+            background: #c0392b;
+        }
+
+        .custom-marker .marker-count {
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .boundary-tooltip {
+            background: rgba(44, 62, 80, 0.9);
+            border: 2px solid #2c3e50;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+            padding: 5px 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 30px;
+            right: 10px;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-size: 12px;
+        }
+
+        .map-legend h4 {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            color: #333;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .legend-line {
+            width: 30px;
+            height: 2px;
+            background: #2c3e50;
+            margin-right: 8px;
+            border-radius: 2px;
+        }
+
+        .legend-marker {
+            width: 12px;
+            height: 12px;
+            background: #e74c3c;
+            border: 2px solid white;
+            border-radius: 50%;
+            margin-right: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        #notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: #27ae60;
+            color: white;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        #notification.error {
+            background: #e74c3c;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #loading {
+            position: fixed;
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%);
+            background: white; 
+            padding: 30px 50px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2); 
+            z-index: 10000; 
+            text-align: center;
+        }
+
+        #loading.hidden {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            #main-container {
+                flex-direction: column;
+            }
+
+            #stats-section {
+                width: 100%;
+                max-height: 400px;
+                border-left: none;
+                border-top: 2px solid #e0e0e0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            input[type="text"] {
+                width: 100%;
+            }
+
+            .control-group {
+                width: 100%;
+            }
+
+            #stats-header {
+                flex-direction: row;
+                justify-content: space-around;
+            }
+
+            .info-cards-side {
+                gap: 8px;
+            }
+
+            .chart-label {
+                flex: 0 0 70px;
+                font-size: 10px;
+            }
+
+            .map-legend {
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                font-size: 11px;
+            }
+
+            .map-legend h4 {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div style="border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+        <div>Veriler GitHub'dan yükleniyor...</div>
+    </div>
+
+    <div id="header">
+        <h1>🏗️ Türkiye İş Cinayetleri Haritası</h1>
+    </div>
+
+    <div id="controls">
+        <div class="control-group">
+            <label>Arama</label>
+            <input type="text" id="searchBox" placeholder="İsim, Yer, Neden...">
+        </div>
+        
+        <div class="control-group">
+            <label>Başlangıç</label>
+            <input type="date" id="startDate">
+        </div>
+        
+        <div class="control-group">
+            <label>Bitiş</label>
+            <input type="date" id="endDate">
+        </div>
+        
+        <div class="control-group">
+            <label>İl</label>
+            <select id="cityFilter">
+                <option value="">Tüm İller</option>
+            </select>
+        </div>
+        
+        <button onclick="applyFilters()">Filtrele</button>
+        <button class="reset" onclick="resetFilters()">Sıfırla</button>
+    </div>
+
+    <div id="main-container">
+        <div id="map-section">
+            <div id="map">
+                <div class="map-legend">
+                    <h4>🗺️ Harita Göstergeleri</h4>
+                    <div class="legend-item">
+                        <div class="legend-marker"></div>
+                        <span>İş Cinayeti</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line"></div>
+                        <span>İl Sınırı / Coğrafi Bölge</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="stats-section">
+            <div id="stats-header">
+                <div class="stat-item">
+                    <span class="stat-label">Toplam:</span>
+                    <span class="stat-value" id="totalRecords">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Gösterilen:</span>
+                    <span class="stat-value" id="displayedRecords">0</span>
+                </div>
+            </div>
+            
+            <div id="infographic-side">
+                <div class="info-cards-side">
+                    <div class="info-card-small">
+                        <div class="card-icon-small">📊</div>
+                        <div class="card-content">
+                            <div class="card-title-small">En Çok Ölüm</div>
+                            <div class="card-value-small" id="topCity">-</div>
+                        </div>
+                    </div>
+                    <div class="info-card-small">
+                        <div class="card-icon-small">⚠️</div>
+                        <div class="card-content">
+                            <div class="card-title-small">En Yaygın Neden</div>
+                            <div class="card-value-small" id="topReason">-</div>
+                        </div>
+                    </div>
+                    <div class="info-card-small">
+                        <div class="card-icon-small">🏭</div>
+                        <div class="card-content">
+                            <div class="card-title-small">En Riskli Sektör</div>
+                            <div class="card-value-small" id="topSector">-</div>
+                        </div>
+                    </div>
+                    <div class="info-card-small">
+                        <div class="card-icon-small">📅</div>
+                        <div class="card-content">
+                            <div class="card-title-small">En Yoğun Ay</div>
+                            <div class="card-value-small" id="topMonth">-</div>
+                        </div>
+                    </div>
+                    <div class="info-card-small">
+                        <div class="card-icon-small">🏙️</div>
+                        <div class="card-content">
+                            <div class="card-title-small">İl Dağılımı</div>
+                            <div class="card-value-small" id="cityCount">-</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="charts-side">
+                    <div class="chart-box-side">
+                        <h3>📍 İllere Göre</h3>
+                        <div id="cityChart"></div>
+                    </div>
+                    <div class="chart-box-side">
+                        <h3>🏭 Sektörlere Göre</h3>
+                        <div id="sectorChart"></div>
+                    </div>
+                    <div class="chart-box-side">
+                        <h3>⚠️ Nedenlere Göre</h3>
+                        <div id="reasonChart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="notification"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    
+    <script>
+        // Gömülü örnek veri (GitHub çalışmazsa)
+        const embeddedData = [{"tarih":"2024-01-15","yer":"Serdivan. Sakarya","isim":"Örnek Çalışan","neden":"Yüksekten düşme","sektor":"İnşaat","lat":"40.7904","lng":"30.3619","link":"https://example.com","olum_sayisi":"1"}];
+
+        let dataSet = [];
+
+        // Harita: Ankara merkezli, Türkiye geneli
+        const map = L.map('map', {
+            center: [39.92077, 32.85411],
+            zoom: 6,
+            minZoom: 4,
+            maxZoom: 18
+        });
+
+        // Arka plan tile
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 18
+        }).addTo(map);
+
+        // Etiket tile
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+            attribution: '',
+            subdomains: 'abcd',
+            maxZoom: 18,
+            pane: 'shadowPane'
+        }).addTo(map);
+
+        // --- RESMİ COĞRAFİ BÖLGELER İÇİN İL → BÖLGE EŞLEMESİ ---
+        const regionByProvince = {
+            // Marmara
+            "İstanbul": "Marmara",
+            "Edirne": "Marmara",
+            "Kırklareli": "Marmara",
+            "Tekirdağ": "Marmara",
+            "Kocaeli": "Marmara",
+            "Sakarya": "Marmara",
+            "Yalova": "Marmara",
+            "Bursa": "Marmara",
+            "Bilecik": "Marmara",
+            "Balıkesir": "Marmara",
+            "Çanakkale": "Marmara",
+
+            // Ege
+            "İzmir": "Ege",
+            "Manisa": "Ege",
+            "Aydın": "Ege",
+            "Denizli": "Ege",
+            "Muğla": "Ege",
+            "Uşak": "Ege",
+            "Afyonkarahisar": "Ege",
+            "Kütahya": "Ege",
+
+            // Akdeniz
+            "Antalya": "Akdeniz",
+            "Isparta": "Akdeniz",
+            "Burdur": "Akdeniz",
+            "Mersin": "Akdeniz",
+            "Adana": "Akdeniz",
+            "Osmaniye": "Akdeniz",
+            "Hatay": "Akdeniz",
+            "Kahramanmaraş": "Akdeniz",
+
+            // İç Anadolu
+            "Ankara": "İç Anadolu",
+            "Konya": "İç Anadolu",
+            "Eskişehir": "İç Anadolu",
+            "Kayseri": "İç Anadolu",
+            "Sivas": "İç Anadolu",
+            "Yozgat": "İç Anadolu",
+            "Kırıkkale": "İç Anadolu",
+            "Kırşehir": "İç Anadolu",
+            "Çankırı": "İç Anadolu",
+            "Nevşehir": "İç Anadolu",
+            "Niğde": "İç Anadolu",
+            "Aksaray": "İç Anadolu",
+            "Karaman": "İç Anadolu",
+
+            // Karadeniz
+            "Zonguldak": "Karadeniz",
+            "Bartın": "Karadeniz",
+            "Karabük": "Karadeniz",
+            "Bolu": "Karadeniz",
+            "Düzce": "Karadeniz",
+            "Trabzon": "Karadeniz",
+            "Rize": "Karadeniz",
+            "Artvin": "Karadeniz",
+            "Giresun": "Karadeniz",
+            "Gümüşhane": "Karadeniz",
+            "Ordu": "Karadeniz",
+            "Samsun": "Karadeniz",
+            "Sinop": "Karadeniz",
+            "Tokat": "Karadeniz",
+            "Çorum": "Karadeniz",
+            "Amasya": "Karadeniz",
+            "Kastamonu": "Karadeniz",
+            "Bayburt": "Karadeniz",
+
+            // Doğu Anadolu
+            "Erzurum": "Doğu Anadolu",
+            "Erzincan": "Doğu Anadolu",
+            "Kars": "Doğu Anadolu",
+            "Iğdır": "Doğu Anadolu",
+            "Ağrı": "Doğu Anadolu",
+            "Ardahan": "Doğu Anadolu",
+            "Van": "Doğu Anadolu",
+            "Bitlis": "Doğu Anadolu",
+            "Muş": "Doğu Anadolu",
+            "Bingöl": "Doğu Anadolu",
+            "Tunceli": "Doğu Anadolu",
+            "Malatya": "Doğu Anadolu",
+            "Elazığ": "Doğu Anadolu",
+            "Hakkari": "Doğu Anadolu",
+
+            // Güneydoğu Anadolu
+            "Gaziantep": "Güneydoğu Anadolu",
+            "Şanlıurfa": "Güneydoğu Anadolu",
+            "Diyarbakır": "Güneydoğu Anadolu",
+            "Mardin": "Güneydoğu Anadolu",
+            "Batman": "Güneydoğu Anadolu",
+            "Siirt": "Güneydoğu Anadolu",
+            "Şırnak": "Güneydoğu Anadolu",
+            "Adıyaman": "Güneydoğu Anadolu",
+            "Kilis": "Güneydoğu Anadolu"
+        };
+
+        const regionColors = {
+            "Marmara": "#1abc9c",
+            "Ege": "#3498db",
+            "Akdeniz": "#9b59b6",
+            "İç Anadolu": "#e67e22",
+            "Karadeniz": "#16a085",
+            "Doğu Anadolu": "#e74c3c",
+            "Güneydoğu Anadolu": "#f1c40f",
+            "Diğer": "#bdc3c7"
+        };
+
+        // --- İL SINIRLARI + COĞRAFİ BÖLGELER (81 İL GEOJSON) ---
+        // İsterseniz bu URL'yi indirip projeye dahil ederek ./geo/tr-cities-utf8.json şeklinde de kullanabilirsiniz.
+        fetch('https://raw.githubusercontent.com/cihadturhan/tr-geojson/master/geo/tr-cities-utf8.json')
+          .then(r => r.json())
+          .then(function(geojsonData) {
+            L.geoJSON(geojsonData, {
+              style: function (feature) {
+                const provinceName = feature.properties && feature.properties.name
+                  ? feature.properties.name
+                  : 'Bilinmeyen';
+                const region = regionByProvince[provinceName] || 'Diğer';
+
+                return {
+                  color: '#2c3e50',
+                  weight: 0.8,
+                  opacity: 0.8,
+                  fillColor: regionColors[region],
+                  fillOpacity: 0.15
+                };
+              },
+              onEachFeature: function (feature, layer) {
+                const provinceName = feature.properties && feature.properties.name
+                  ? feature.properties.name
+                  : 'Bilinmeyen İl';
+                const region = regionByProvince[provinceName] || 'Bilinmeyen Bölge';
+
+                layer.bindTooltip(`${provinceName} (${region})`, {
+                    permanent: false,
+                    direction: 'center',
+                    className: 'boundary-tooltip'
+                });
+              }
+            }).addTo(map);
+          })
+          .catch(err => {
+            console.error('İl GeoJSON yüklenemedi:', err);
+          });
+
+        // Zoom seviyesine göre marker boyutu
+        function updateMarkerZoomScale() {
+            const zoom = map.getZoom();
+            const scale = 0.8 + (zoom - (map.options.minZoom || 4)) * 0.06;
+            const finalScale = Math.max(0.7, Math.min(scale, 1.6));
+            const markersEl = document.querySelectorAll('.custom-marker .marker-circle');
+            markersEl.forEach(el => {
+                el.style.transform = `scale(${finalScale})`;
+            });
+        }
+
+        map.on('zoomend', updateMarkerZoomScale);
+
+        let markers = L.markerClusterGroup({
+            maxClusterRadius: 40,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: true,
+            zoomToBoundsOnClick: true,
+            disableClusteringAtZoom: 13,
+            maxZoom: 13,
+            spiderfyDistanceMultiplier: 1.2
+        });
+
+        let allMarkers = [];
+
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = isError ? 'error' : '';
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        function parseCSV(text) {
+            const lines = text.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            
+            return lines.slice(1).map(line => {
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim());
+                
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = values[index] || '';
+                });
+                
+                return obj;
+            });
+        }
+
+        function getProvinceFromYer(y) {
+            if (!y) return '';
+            const parts = y.split('.');
+            if (parts.length > 1) {
+                return parts[parts.length - 1].trim();
+            } else {
+                const tokens = y.trim().split(/\s+/);
+                return tokens[tokens.length - 1];
+            }
+        }
+
+        async function loadDataFromGitHub() {
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/suacalis/is_cinayetleri/refs/heads/main/veri_turkiye.csv', {
+                    method: 'GET',
+                    cache: 'no-cache',
+                    mode: 'cors'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const csvText = await response.text();
+                const parsed = parseCSV(csvText);
+                
+                dataSet = parsed.map(obj => {
+                    return {
+                        tarih: obj.tarih || '',
+                        yer: obj.yer || '',
+                        isim: obj.isim || '',
+                        neden: obj.neden || '',
+                        sektor: obj.sektor || 'Diğer',
+                        lat: parseFloat(obj.lat) || 0,
+                        lon: parseFloat(obj.lng || obj.lon) || 0,
+                        link: obj.link || '',
+                        olum_sayisi: parseInt(obj.olum_sayisi) || 1
+                    };
+                }).filter(item => item.lat !== 0 && item.lon !== 0);
+                
+                loadData(dataSet, 'GitHub');
+                
+            } catch (error) {
+                console.error('GitHub yükleme hatası:', error);
+                
+                dataSet = embeddedData.map(obj => {
+                    return {
+                        tarih: obj.tarih || '',
+                        yer: obj.yer || '',
+                        isim: obj.isim || '',
+                        neden: obj.neden || '',
+                        sektor: obj.sektor || 'Diğer',
+                        lat: parseFloat(obj.lat) || 0,
+                        lon: parseFloat(obj.lng || obj.lon) || 0,
+                        link: obj.link || '',
+                        olum_sayisi: parseInt(obj.olum_sayisi) || 1
+                    };
+                }).filter(item => item.lat !== 0 && item.lon !== 0);
+                
+                loadData(dataSet, 'Gömülü Veri');
+            }
+        }
+        
+        function loadData(data, source) {
+            if (data.length > 0) {
+                populateCityFilter();
+                createMarkers(data);
+                showNotification(`✅ ${data.length} kayıt yüklendi! (Kaynak: ${source})`);
+            } else {
+                showNotification('❌ Geçerli veri bulunamadı!', true);
+            }
+            
+            document.getElementById('loading').classList.add('hidden');
+            updateMarkerZoomScale();
+        }
+
+        function populateCityFilter() {
+            const provinces = [...new Set(dataSet.map(item => getProvinceFromYer(item.yer)))]
+                .filter(Boolean)
+                .sort();
+            const select = document.getElementById('cityFilter');
+            select.innerHTML = '<option value="">Tüm İller</option>';
+            provinces.forEach(province => {
+                const option = document.createElement('option');
+                option.value = province;
+                option.textContent = province;
+                select.appendChild(option);
+            });
+        }
+
+        function createMarkers(data) {
+            markers.clearLayers();
+            allMarkers = [];
+
+            data.forEach(item => {
+                const deaths = item.olum_sayisi || 1;
+                
+                for (let i = 0; i < deaths; i++) {
+                    const offsetDistance = 0.0002;
+                    const angle = (i / deaths) * 2 * Math.PI;
+                    const latOffset = Math.cos(angle) * offsetDistance * (deaths > 1 ? 1 : 0);
+                    const lonOffset = Math.sin(angle) * offsetDistance * (deaths > 1 ? 1 : 0);
+                    
+                    const adjustedLat = item.lat + latOffset;
+                    const adjustedLon = item.lon + lonOffset;
+                    
+                    const icon = L.divIcon({
+                        className: 'custom-marker',
+                        iconSize: [24, 24],
+                        html: `<div class="marker-circle low"><span class="marker-count">1</span></div>`
+                    });
+
+                    const marker = L.marker([adjustedLat, adjustedLon], { icon: icon });
+
+                    const popupContent = `
+                        <div class="popup-title">${item.isim}</div>
+                        <div class="popup-info">
+                            <span class="popup-label">📅 Tarih:</span> ${formatDate(item.tarih)}
+                        </div>
+                        <div class="popup-info">
+                            <span class="popup-label">📍 Yer:</span> ${item.yer}
+                        </div>
+                        <div class="popup-info">
+                            <span class="popup-label">🏭 Sektör:</span> ${item.sektor || 'Belirtilmemiş'}
+                        </div>
+                        <div class="popup-info">
+                            <span class="popup-label">⚠️ Neden:</span> ${item.neden}
+                        </div>
+                        <div class="popup-info">
+                            <span class="popup-label">☠️ Toplam Ölüm Sayısı (Bu Olay):</span> ${deaths}
+                        </div>
+                        <div class="popup-info">
+                            <span class="popup-label">👤 Bu Marker:</span> ${i + 1}. kişi
+                        </div>
+                        ${item.link ? `<a href="${item.link}" target="_blank" class="popup-link">🔗 Haberi Oku</a>` : ''}
+                    `;
+
+                    marker.bindPopup(popupContent);
+                    marker.data = item;
+                    allMarkers.push(marker);
+                    markers.addLayer(marker);
+                }
+            });
+
+            map.addLayer(markers);
+
+            if (data.length > 0) {
+                const group = new L.featureGroup(allMarkers);
+                map.fitBounds(group.getBounds().pad(0.1), {
+                    maxZoom: 8,
+                    animate: true,
+                    duration: 1.0
+                });
+            }
+
+            updateStats(data.length);
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Bilinmiyor';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('tr-TR', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+
+        function updateStats(displayed) {
+            document.getElementById('totalRecords').textContent = dataSet.length;
+            document.getElementById('displayedRecords').textContent = displayed;
+            
+            if (displayed > 0) {
+                generateInfographic(dataSet.filter((item) => {
+                    const searchText = document.getElementById('searchBox').value.toLowerCase();
+                    const startDate = document.getElementById('startDate').value;
+                    const endDate = document.getElementById('endDate').value;
+                    const province = document.getElementById('cityFilter').value;
+
+                    const matchSearch = !searchText || 
+                        item.isim.toLowerCase().includes(searchText) ||
+                        item.yer.toLowerCase().includes(searchText) ||
+                        item.neden.toLowerCase().includes(searchText);
+
+                    const matchStartDate = !startDate || item.tarih >= startDate;
+                    const matchEndDate = !endDate || item.tarih <= endDate;
+                    
+                    const itemProvince = getProvinceFromYer(item.yer);
+                    const matchProvince = !province || itemProvince === province;
+
+                    return matchSearch && matchStartDate && matchEndDate && matchProvince;
+                }));
+            }
+        }
+
+        function generateInfographic(data) {
+            if (data.length === 0) return;
+
+            const provinceData = {};
+            data.forEach(item => {
+                const province = getProvinceFromYer(item.yer);
+                if (!province) return;
+                const deaths = item.olum_sayisi || 1;
+                provinceData[province] = (provinceData[province] || 0) + deaths;
+            });
+
+            const topProvinces = Object.entries(provinceData)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+
+            const sectorData = {};
+            data.forEach(item => {
+                const sector = item.sektor || 'Diğer';
+                const deaths = item.olum_sayisi || 1;
+                sectorData[sector] = (sectorData[sector] || 0) + deaths;
+            });
+
+            const topSectors = Object.entries(sectorData)
+                .sort((a, b) => b[1] - a[1]);
+
+            const reasonData = {};
+            data.forEach(item => {
+                const reason = item.neden ? item.neden.substring(0, 30) : 'Belirtilmemiş';
+                const deaths = item.olum_sayisi || 1;
+                reasonData[reason] = (reasonData[reason] || 0) + deaths;
+            });
+
+            const topReasons = Object.entries(reasonData)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            const monthData = {};
+            const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
+                              'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+            data.forEach(item => {
+                if (item.tarih) {
+                    const month = new Date(item.tarih).getMonth();
+                    const monthName = monthNames[month];
+                    monthData[monthName] = (monthData[monthName] || 0) + 1;
+                }
+            });
+
+            const topMonth = Object.entries(monthData)
+                .sort((a, b) => b[1] - a[1])[0];
+
+            document.getElementById('topCity').textContent = 
+                topProvinces[0] ? `${topProvinces[0][0]} (${topProvinces[0][1]})` : '-';
+            document.getElementById('topReason').textContent = 
+                topReasons[0] ? `${topReasons[0][0]}... (${topReasons[0][1]})` : '-';
+            document.getElementById('topSector').textContent = 
+                topSectors[0] ? `${topSectors[0][0]} (${topSectors[0][1]})` : '-';
+            document.getElementById('topMonth').textContent = 
+                topMonth ? `${topMonth[0]} (${topMonth[1]})` : '-';
+            document.getElementById('cityCount').textContent = 
+                `${Object.keys(provinceData).length} İl`;
+
+            const maxProvinceValue = topProvinces[0] ? topProvinces[0][1] : 1;
+            let provinceChartHTML = '';
+            topProvinces.forEach(([province, count]) => {
+                const percentage = (count / maxProvinceValue) * 100;
+                provinceChartHTML += `
+                    <div class="chart-item">
+                        <div class="chart-label">${province}</div>
+                        <div class="chart-bar-container">
+                            <div class="chart-bar" style="width: ${percentage}%"></div>
+                        </div>
+                            <div class="chart-value">${count}</div>
+                    </div>
+                `;
+            });
+            document.getElementById('cityChart').innerHTML = provinceChartHTML;
+
+            const maxSectorValue = topSectors[0] ? topSectors[0][1] : 1;
+            let sectorChartHTML = '';
+            topSectors.forEach(([sector, count]) => {
+                const percentage = (count / maxSectorValue) * 100;
+                sectorChartHTML += `
+                    <div class="chart-item">
+                        <div class="chart-label">${sector}</div>
+                        <div class="chart-bar-container">
+                            <div class="chart-bar" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="chart-value">${count}</div>
+                    </div>
+                `;
+            });
+            document.getElementById('sectorChart').innerHTML = sectorChartHTML;
+
+            const maxReasonValue = topReasons[0] ? topReasons[0][1] : 1;
+            let reasonChartHTML = '';
+            topReasons.forEach(([reason, count]) => {
+                const percentage = (count / maxReasonValue) * 100;
+                reasonChartHTML += `
+                    <div class="chart-item">
+                        <div class="chart-label">${reason}...</div>
+                        <div class="chart-bar-container">
+                            <div class="chart-bar" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="chart-value">${count}</div>
+                    </div>
+                `;
+            });
+            document.getElementById('reasonChart').innerHTML = reasonChartHTML;
+        }
+
+        function applyFilters() {
+            const searchText = document.getElementById('searchBox').value.toLowerCase();
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const province = document.getElementById('cityFilter').value;
+
+            const filtered = dataSet.filter(item => {
+                const matchSearch = !searchText || 
+                    item.isim.toLowerCase().includes(searchText) ||
+                    item.yer.toLowerCase().includes(searchText) ||
+                    item.neden.toLowerCase().includes(searchText);
+
+                const matchStartDate = !startDate || item.tarih >= startDate;
+                const matchEndDate = !endDate || item.tarih <= endDate;
+
+                const itemProvince = getProvinceFromYer(item.yer);
+                const matchProvince = !province || itemProvince === province;
+
+                return matchSearch && matchStartDate && matchEndDate && matchProvince;
+            });
+
+            createMarkers(filtered);
+        }
+
+        function resetFilters() {
+            document.getElementById('searchBox').value = '';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('cityFilter').value = '';
+            createMarkers(dataSet);
+        }
+
+        document.getElementById('searchBox').addEventListener('input', applyFilters);
+
+        window.onload = function() {
+            loadDataFromGitHub();
+        };
+    </script>
+</body>
+</html>
